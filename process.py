@@ -7,6 +7,7 @@
 # License: GPLv3
 
 
+from __future__ import print_function
 import os
 from subprocess import call
 import errno
@@ -28,7 +29,7 @@ def check_create_folder(folder_path):
     """
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
-        print "%s folder created" % folder_path
+        print("%s folder created" % folder_path)
 
     return folder_path
 
@@ -42,12 +43,11 @@ def get_file(path):
 
 class Process(object):
 
-    def __init__(self, zip_image, path=None):
+    def __init__(self, zip_image):
         """ Initating the Process class
 
         Arguments:
-            image - the string containing the name of the image folder e.g. LC80030032014158LGN00
-            path - Path to where the image folder is located
+        zip_image - the string containing the path of the landsat 8 image compressed file
 
         """
         self.image = get_file(zip_image).split('.')[0]
@@ -63,9 +63,6 @@ class Process(object):
 
         self.btm_prct = 2
         self.top_prct = 2
-
-        if path:
-            self.path = path
 
         self.temp = settings.TEMP_PATH
         self.src_image_path = os.path.join(self.temp, self.image)
@@ -88,7 +85,7 @@ class Process(object):
         self.cleanup()
 
     def unzip(self, src, dst):
-        print "Unzipping %s - It might take some time" % self.image
+        print("Unzipping %s - It might take some time" % self.image)
         tar = tarfile.open(src)
         tar.extractall(path=dst)
         tar.close()
@@ -99,7 +96,7 @@ class Process(object):
         rgb = os.path.join(self.delivery_path, self.new_name + '_r6g5b4.tif')
         call(['gdalbuildvrt', '-q', '-separate', vrt, self.b6, self.b5, self.b4])
         call(['gdal_translate', '-q', '-co', 'COMPRESS=LZW', vrt, rgb])
-        print 'Created RGB file in %s' % rgb
+        print('Created RGB file in %s' % rgb)
 
     def make_ndvi(self):
         '''Generate a NDVI image.'''
@@ -107,7 +104,7 @@ class Process(object):
         b4 = gdal.Open(self.b4, gdal.GA_ReadOnly)
         b5 = gdal.Open(self.b5, gdal.GA_ReadOnly)
         if b4 is None or b5 is None:
-            print "Some of the datasets could not be opened"
+            print("Some of the datasets could not be opened")
             sys.exit(-1)
 
         red_band = b4.GetRasterBand(1)
@@ -122,7 +119,7 @@ class Process(object):
         outDataset.SetProjection(b4.GetProjection())
 
         if outDataset is None:
-            print 'Could not create output image'
+            print('Could not create output image')
             sys.exit(-1)
 
         for line in range(numLines):
@@ -151,7 +148,7 @@ class Process(object):
                 buf_type=gdal.GDT_Float32)
             del outputLine
 
-        print 'NDVI Created in %s' % output_file
+        print('NDVI Created in %s' % output_file)
 
     def copy_bqa(self):
         '''Copy the BQA file to delivery_path.'''
