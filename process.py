@@ -2,7 +2,7 @@
 #
 #
 # Author: Hex Gis
-# Contributer: willemarcel
+# Contributor: willemarcel
 #
 # License: GPLv3
 
@@ -47,7 +47,7 @@ class Process(object):
         """ Initating the Process class
 
         Arguments:
-        zip_image - the string containing the path of the landsat 8 image compressed file
+        zip_image - the string containing the path of the landsat 8 compressed file
 
         """
         self.image = get_file(zip_image).split('.')[0]
@@ -59,11 +59,8 @@ class Process(object):
                     ).strftime('%Y%m%d')
         self.new_name = "%s_%s-%s_%s_%s" % (self.image[:3], self.lcpath,
             self.lcrow, self.date, self.image[16:])
+
         self.destination = settings.PROCESSED_IMAGES
-
-        self.btm_prct = 2
-        self.top_prct = 2
-
         self.temp = settings.TEMP_PATH
         self.src_image_path = os.path.join(self.temp, self.image)
         self.b4 = os.path.join(self.src_image_path, self.image + '_B4.TIF')
@@ -75,17 +72,18 @@ class Process(object):
         check_create_folder(self.src_image_path)
         check_create_folder(self.delivery_path)
 
-        self.unzip(zip_image, self.src_image_path)
+        self.extract(zip_image, self.src_image_path)
 
     def full(self):
-        '''Make RGB and NDVI and copy BQA image.'''
+        '''Make RGB and NDVI and copy BQA image to delivery_path.'''
         self.make_rgb()
         self.make_ndvi()
         self.copy_bqa()
         self.cleanup()
 
-    def unzip(self, src, dst):
-        print("Unzipping %s - It might take some time" % self.image)
+    def extract(self, src, dst):
+        '''Extract the Landsat 8 file.'''
+        print("Extracting %s - It might take some time" % self.image)
         tar = tarfile.open(src)
         tar.extractall(path=dst)
         tar.close()
