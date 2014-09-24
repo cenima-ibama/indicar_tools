@@ -84,9 +84,7 @@ class Process(object):
     def extract(self, src, dst):
         '''Extract the Landsat 8 file.'''
         print("Extracting %s - It might take some time" % self.image)
-        tar = tarfile.open(src)
-        tar.extractall(path=dst)
-        tar.close()
+        call(['tar', '-xzf', scr, '-C', dst]
 
     def make_rgb(self):
         '''Make a RGB Image using the bands 4, 5 and 6.'''
@@ -150,8 +148,12 @@ class Process(object):
 
     def copy_bqa(self):
         '''Copy the BQA file to delivery_path.'''
-        os.rename(os.path.join(self.src_image_path, self.image + '_BQA.TIF'),
-            os.path.join(self.delivery_path, self.new_name + '_BQA.tif'))
+        bqa = os.path.join(self.src_image_path, self.image + '_BQA.TIF')
+        if os.path.isfile(bqa):
+            os.rename(bqa,
+                os.path.join(self.delivery_path, self.new_name + '_BQA.tif'))
+        else:
+            print('BQA file not found')
 
     def cleanup(self):
         '''Delete processing image path.'''
