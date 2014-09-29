@@ -76,10 +76,10 @@ class Process(object):
         self.extract(zip_image, self.src_image_path)
 
     def full(self):
-        '''Make RGB and NDVI and copy BQA image to delivery_path.'''
-        self.copy_bqa()
+        '''Make RGB and NDVI and move BQA image to delivery_path.'''
         self.make_rgb()
         self.make_ndvi()
+        self.move_bqa()
         self.cleanup()
 
     def extract(self, src, dst):
@@ -161,8 +161,8 @@ class Process(object):
 
         print('NDVI Created in %s' % output_file)
 
-    def copy_bqa(self):
-        '''Copy the BQA file to delivery_path.'''
+    def move_bqa(self):
+        '''Move the BQA file to delivery_path.'''
         if os.path.isfile(self.bqa):
             os.rename(self.bqa,
                 os.path.join(self.delivery_path, self.new_name + '_BQA.tif'))
