@@ -66,6 +66,7 @@ class Process(object):
         self.b4 = os.path.join(self.src_image_path, self.image + '_B4.TIF')
         self.b5 = os.path.join(self.src_image_path, self.image + '_B5.TIF')
         self.b6 = os.path.join(self.src_image_path, self.image + '_B6.TIF')
+        self.bqa = os.path.join(self.src_image_path, self.image + '_BQA.TIF')
         self.delivery_path = os.path.join(self.destination, self.lcpath,
             self.lcrow)
 
@@ -76,9 +77,9 @@ class Process(object):
 
     def full(self):
         '''Make RGB and NDVI and copy BQA image to delivery_path.'''
+        self.copy_bqa()
         self.make_rgb()
         self.make_ndvi()
-        self.copy_bqa()
         self.cleanup()
 
     def extract(self, src, dst):
@@ -95,17 +96,24 @@ class Process(object):
         print('Created RGB file in %s' % rgb)
 
     def make_ndvi(self):
-        '''Generate a NDVI image.'''
+        '''Generate a NDVI image. If the BQA value indicates cloud or cirrus,
+        the NDVI value will be zero.'''
 
         b4 = gdal.Open(self.b4, gdal.GA_ReadOnly)
         b5 = gdal.Open(self.b5, gdal.GA_ReadOnly)
-        if b4 is None or b5 is None:
+        bqa = gdal.Open(self.bqa, gdal.GA_ReadOnly)
+
+        if b4 is None or b5 is None or bqa is None:
             print("Some of the datasets could not be opened")
             sys.exit(-1)
 
         red_band = b4.GetRasterBand(1)
         nir_band = b5.GetRasterBand(1)
+        bqa_band = bqa.GetRasterBand(1)
         numLines = red_band.YSize
+
+        bqa_values = [61440, 59424, 57344, 56320, 53248, 52256, 52224, 49184,
+            49152, 48128, 45056, 43040, 39936, 36896, 36864, 32768, 31744, 28672]
 
         driver = b4.GetDriver()
         output_file = os.path.join(self.delivery_path, self.new_name + '_ndvi.tif')
@@ -128,14 +136,21 @@ class Process(object):
                 nir_band.XSize, 1, gdal.GDT_Float32)
             nir_tuple = struct.unpack('f' * nir_band.XSize, nir_scanline)
 
+            bqa_scanline = bqa_band.ReadRaster(0, line, bqa_band.XSize, 1,
+                bqa_band.XSize, 1, gdal.GDT_Float32)
+            bqa_tuple = struct.unpack('f' * bqa_band.XSize, bqa_scanline)
+
             for i in range(len(red_tuple)):
-                ndvi_lower = (nir_tuple[i] + red_tuple[i])
-                ndvi_upper = (nir_tuple[i] - red_tuple[i])
-                ndvi = 0
-                if ndvi_lower == 0:
+                if bqa_tuple[i] in bqa_values:
                     ndvi = 0
                 else:
-                    ndvi = ndvi_upper / ndvi_lower
+                    ndvi_lower = (nir_tuple[i] + red_tuple[i])
+                    ndvi_upper = (nir_tuple[i] - red_tuple[i])
+                    ndvi = 0
+                    if ndvi_lower == 0:
+                        ndvi = 0
+                    else:
+                        ndvi = ndvi_upper / ndvi_lower
 
                 outputLine = outputLine + struct.pack('f', ndvi)
 
@@ -148,9 +163,8 @@ class Process(object):
 
     def copy_bqa(self):
         '''Copy the BQA file to delivery_path.'''
-        bqa = os.path.join(self.src_image_path, self.image + '_BQA.TIF')
-        if os.path.isfile(bqa):
-            os.rename(bqa,
+        if os.path.isfile(self.bqa):
+            os.rename(self.bqa,
                 os.path.join(self.delivery_path, self.new_name + '_BQA.tif'))
         else:
             print('BQA file not found')
