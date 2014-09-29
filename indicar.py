@@ -60,13 +60,11 @@ def main(args):
             if args.rgb:
                 p.make_rgb()
                 p.cleanup()
-                exit("The output is stored at %s." % settings.PROCESSED_IMAGES)
             elif args.ndvi:
                 p.make_ndvi()
                 p.cleanup()
             else:
                 p.full()
-            exit("The output is stored at %s." % settings.PROCESSED_IMAGES)
 
 
 def exit(message, code=0):
