@@ -41,6 +41,45 @@ def get_file(path):
     return os.path.basename(path)
 
 
+def get_image_bounds(image_path):
+    """ Return the coordinates of the lower left (minx, miny) and the
+    upper right (maxx, maxy) of the image. """
+    ds = gdal.Open(image_path, gdal.GA_ReadOnly)
+    width = ds.RasterXSize
+    height = ds.RasterYSize
+    gt = ds.GetGeoTransform()
+    minx = gt[0]
+    miny = gt[3] + width * gt[4] + height * gt[5]
+    maxx = gt[0] + width * gt[1] + height * gt[2]
+    maxy = gt[3]
+
+    return ((minx, miny), (maxx, maxy))
+
+
+def get_intersection_bounds(image1, image2):
+    """ Return the intersection bounds of 2 images. The method used is to get
+    the max value of the minx and miny and the minimum value of maxx and maxy"""
+    img1_bounds = get_image_bounds(image1)
+    img2_bounds = get_image_bounds(image2)
+
+    minx = [img1_bounds[0][0], img2_bounds[0][0]]
+    minx.sort()
+    miny = [img1_bounds[0][1], img2_bounds[0][1]]
+    miny.sort()
+    maxx = [img1_bounds[1][0], img2_bounds[1][0]]
+    maxx.sort()
+    maxy = [img1_bounds[1][1], img2_bounds[1][1]]
+    maxy.sort()
+
+    return [minx[1], miny[1], maxx[0], maxy[0]]
+
+
+def warp_image(image, bounds, output_file):
+    bounds = ['%s' % i for i in bounds]
+    call(['gdalwarp', '-te'] + bounds + [image, output_file])
+    print('Warp image created in %s' % output_file)
+
+
 class Process(object):
 
     def __init__(self, zip_image):
@@ -60,6 +99,14 @@ class Process(object):
         self.new_name = "%s_%s-%s_%s_%s" % (self.image[:3], self.lcpath,
             self.lcrow, self.date, self.image[16:])
 
+        # date of last image of the scene
+        self.last_date = (date(int(self.year), 1, 1) + \
+                    timedelta(int(self.day - 16) - 1)
+                    ).strftime('%Y%m%d')
+        # name of last image of the scene
+        self.last_image = "%s_%s-%s_%s_%s" % (self.image[:3], self.lcpath,
+            self.lcrow, self.last_date, self.image[16:])
+
         self.destination = settings.PROCESSED_IMAGES
         self.temp = settings.TEMP_PATH
         self.src_image_path = os.path.join(self.temp, self.image)
@@ -69,6 +116,7 @@ class Process(object):
         self.bqa = os.path.join(self.src_image_path, self.image + '_BQA.TIF')
         self.delivery_path = os.path.join(self.destination, self.lcpath,
             self.lcrow)
+        self.ndvi = os.path.join(self.delivery_path, self.new_name + '_ndvi.tif')
 
         check_create_folder(self.src_image_path)
         check_create_folder(self.delivery_path)
@@ -116,8 +164,7 @@ class Process(object):
             49152, 48128, 45056, 43040, 39936, 36896, 36864, 32768, 31744, 28672]
 
         driver = b4.GetDriver()
-        output_file = os.path.join(self.delivery_path, self.new_name + '_ndvi.tif')
-        outDataset = driver.Create(output_file, b4.RasterXSize, b4.RasterYSize,
+        outDataset = driver.Create(self.ndvi, b4.RasterXSize, b4.RasterYSize,
             1, gdal.GDT_Float32)
         outDataset.SetGeoTransform(b4.GetGeoTransform())
         outDataset.SetProjection(b4.GetProjection())
