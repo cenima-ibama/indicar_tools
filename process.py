@@ -6,13 +6,11 @@
 #
 # License: GPLv3
 
-
 from __future__ import print_function
 import os
 from subprocess import call
 import errno
 import shutil
-import tarfile
 from datetime import date, timedelta
 import sys
 import struct
@@ -21,6 +19,7 @@ from osgeo import gdal
 from numpy import *
 
 import settings
+from gdal_operations import *
 
 
 def check_create_folder(folder_path):
@@ -74,12 +73,6 @@ def get_intersection_bounds(image1, image2):
     return [minx[1], miny[1], maxx[0], maxy[0]]
 
 
-def warp_image(image, bounds, output_file):
-    bounds = ['%s' % i for i in bounds]
-    call(['gdalwarp', '-te'] + bounds + [image, output_file])
-    print('Warp image created in %s' % output_file)
-
-
 class Process(object):
 
     def __init__(self, zip_image):
@@ -101,7 +94,7 @@ class Process(object):
 
         # date of last image of the scene
         self.last_date = (date(int(self.year), 1, 1) + \
-                    timedelta(int(self.day - 16) - 1)
+                    timedelta(int(self.day) - 17)
                     ).strftime('%Y%m%d')
         # name of last image of the scene
         self.last_image = "%s_%s-%s_%s_%s" % (self.image[:3], self.lcpath,
@@ -128,6 +121,7 @@ class Process(object):
         self.make_rgb()
         self.make_ndvi()
         self.move_bqa()
+        self.change_detection()
         self.cleanup()
 
     def extract(self, src, dst):
@@ -206,7 +200,38 @@ class Process(object):
                 buf_type=gdal.GDT_Float32)
             del outputLine
 
-        print('NDVI Created in %s' % output_file)
+        print('NDVI Created in %s' % self.ndvi)
+
+    def change_detection(self):
+        ndvi_warp = os.path.join(self.src_image_path,
+            self.new_name + '_ndvi_warp.tif')
+        last_ndvi = os.path.join(self.delivery_path,
+            self.last_image + '_ndvi.tif')
+        last_ndvi_warp = os.path.join(self.src_image_path,
+            self.last_image + '_ndviwarp.tif')
+        changes = os.path.join(self.src_image_path,
+            self.new_name + '_changes.tif')
+        changes_mask = os.path.join(self.src_image_path,
+            self.new_name + '_changes_mask.tif')
+        sieve = os.path.join(self.src_image_path,
+            self.new_name + '_sieve.tif')
+        detection = os.path.join(self.delivery_path,
+            self.new_name + '_detection.gml')
+        if os.path.isfile(self.ndvi) and os.path.isfile(last_ndvi):
+            if get_image_bounds(self.ndvi) != get_image_bounds(last_ndvi):
+                bounds = get_intersection_bounds(self.ndvi, last_ndvi)
+                warp_image(self.ndvi, bounds, ndvi_warp)
+                warp_image(last_ndvi, bounds, last_ndvi_warp)
+                subtract(ndvi_warp, last_ndvi_warp, changes)
+            else:
+                subtract(self.ndvi, last_ndvi, changes)
+
+            mask_image(changes, -0.1, changes_mask)
+            call(['gdal_sieve.py', '-st', '-25', changes_mask, sieve])
+            call(['gdal_polygonize.py', sieve, detection])
+            print('Change detection created in %s.' % detection)
+        else:
+            print('Change detection was not executed because some NDVI image is missing.')
 
     def move_bqa(self):
         '''Move the BQA file to delivery_path.'''
