@@ -13,22 +13,25 @@ import argparse
 import textwrap
 import sys
 
-import settings
 from process import Process
 
 
-DESCRIPTION = """Indicar tools is the software made by the Indicar Project
+DESCRIPTION = """indicar-tools is the software made by the Indicar Project
 to process Landsat 8 imagery.
 
     Commands:
-        Process: creates RGB images and NDVI from a scene imagery
+        Process: creates RGB, NDVI and a polygon containing the losses in the
+        vegetation of the imagery in comparison with the NDVI of the same
+        scene generated 16 days ago.
         indicar.py process path
 
-        Rgb:  creates only a RGB image
-        indicar.py process --only-rgb path
+        RGB: creates only a RGB image, using the bands 6, 5 and 4. This RGB
+        gives emphasys on the areas without vegetation.
+        indicar.py process --rgb path
 
-        Ndvi: creates only a NDVI image
-        indicar.py process --only-ndvi path
+        NDVI: creates only a NDVI image. Where there are clouds or cirrus,
+        the pixel value will be 0.
+        indicar.py process --ndvi path
 """
 
 
