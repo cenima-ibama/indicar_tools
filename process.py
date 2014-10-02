@@ -16,7 +16,6 @@ import sys
 import struct
 
 from osgeo import gdal
-from numpy import *
 
 import settings
 from gdal_operations import *
@@ -79,7 +78,7 @@ class Process(object):
         """ Initating the Process class
 
         Arguments:
-        zip_image - the string containing the path of the landsat 8 compressed file
+        zip_image - string containing the path of the landsat 8 compressed file
 
         """
         self.image = get_file(zip_image).split('.')[0]
@@ -215,8 +214,10 @@ class Process(object):
             self.new_name + '_changes_mask.tif')
         sieve = os.path.join(self.src_image_path,
             self.new_name + '_sieve.tif')
-        detection = os.path.join(self.delivery_path,
-            self.new_name + '_detection.gml')
+        detection_shp = os.path.join(self.src_image_path,
+            self.new_name + '_detection.shp')
+        detection_geojson = os.path.join(self.delivery_path,
+            self.new_name + '_detection.geojson')
         if os.path.isfile(self.ndvi) and os.path.isfile(last_ndvi):
             if get_image_bounds(self.ndvi) != get_image_bounds(last_ndvi):
                 bounds = get_intersection_bounds(self.ndvi, last_ndvi)
@@ -227,9 +228,16 @@ class Process(object):
                 subtract(self.ndvi, last_ndvi, changes)
 
             mask_image(changes, -0.1, changes_mask)
-            call(['gdal_sieve.py', '-st', '-25', changes_mask, sieve])
-            call(['gdal_polygonize.py', sieve, detection])
-            print('Change detection created in %s.' % detection)
+            # remove areas lower than 33 pixels what represents 30000 sq metres
+            call(['gdal_sieve.py', '-st', '33', changes_mask, sieve])
+            call(['gdal_polygonize.py', sieve, '-f', 'ESRI Shapefile',
+                detection_shp])
+            # convert to GeoJSON, reproject in Sirgas 2000 and filter areas
+            # with DN=1 to get only the areas where the pixel had
+            # value 1 in the changes_mask
+            call(['ogr2ogr', '-where', '"DN"=1', '-t_srs', 'EPSG:4674',
+                '-f', 'GeoJSON', detection_geojson, detection_shp])
+            print('Change detection created in %s.' % detection_geojson)
         else:
             print('Change detection was not executed because some NDVI image is missing.')
 

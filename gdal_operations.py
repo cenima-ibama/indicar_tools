@@ -11,7 +11,6 @@
 from __future__ import print_function
 from osgeo import gdal
 from subprocess import call
-from numpy import *
 import sys
 import struct
 
@@ -39,8 +38,8 @@ def subtract(img1, img2, output_file):
     numLines = img1_band.YSize
 
     driver = image1.GetDriver()
-    outDataset = driver.Create(output_file, image1.RasterXSize, image1.RasterYSize,
-        1, gdal.GDT_Float32)
+    outDataset = driver.Create(output_file, image1.RasterXSize,
+        image1.RasterYSize, 1, gdal.GDT_Float32)
     outDataset.SetGeoTransform(image1.GetGeoTransform())
     outDataset.SetProjection(image1.GetProjection())
 
