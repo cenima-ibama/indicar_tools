@@ -5,7 +5,7 @@ Indicar Landsat Geoprocessing Tools
 
 indicar-tools is the software made by the Indicar Project to process Landsat 8 imagery.
 
-Commands:
+#### Commands:
 
 RGB: creates only a RGB image, using the bands 6, 5 and 4. This RGB gives emphasys on the areas without vegetation.
 
@@ -20,3 +20,12 @@ Process: creates RGB, NDVI and a polygon containing the losses in the vegetation
     indicar.py process path
 
 path is the path for a compressed file containing the landsat imagery.
+
+#### Requirements
+
+GDAL >= 1.9
+
+
+#### License
+
+GPL 3
