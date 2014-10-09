@@ -12,7 +12,6 @@ from subprocess import call
 import errno
 import shutil
 from datetime import date, timedelta
-import sys
 import struct
 
 from osgeo import gdal
@@ -146,60 +145,56 @@ class Process(object):
 
         if b4 is None or b5 is None or bqa is None:
             print("Some of the datasets could not be opened")
-            sys.exit(-1)
+        else:
+            red_band = b4.GetRasterBand(1)
+            nir_band = b5.GetRasterBand(1)
+            bqa_band = bqa.GetRasterBand(1)
+            numLines = red_band.YSize
 
-        red_band = b4.GetRasterBand(1)
-        nir_band = b5.GetRasterBand(1)
-        bqa_band = bqa.GetRasterBand(1)
-        numLines = red_band.YSize
+            bqa_values = [61440, 59424, 57344, 56320, 53248, 52256, 52224,
+                49184, 49152, 48128, 45056, 43040, 39936, 36896, 36864, 32768,
+                31744, 28672]
 
-        bqa_values = [61440, 59424, 57344, 56320, 53248, 52256, 52224, 49184,
-            49152, 48128, 45056, 43040, 39936, 36896, 36864, 32768, 31744, 28672]
+            driver = b4.GetDriver()
+            outDataset = driver.Create(self.ndvi, b4.RasterXSize, b4.RasterYSize,
+                1, gdal.GDT_Float32)
+            outDataset.SetGeoTransform(b4.GetGeoTransform())
+            outDataset.SetProjection(b4.GetProjection())
 
-        driver = b4.GetDriver()
-        outDataset = driver.Create(self.ndvi, b4.RasterXSize, b4.RasterYSize,
-            1, gdal.GDT_Float32)
-        outDataset.SetGeoTransform(b4.GetGeoTransform())
-        outDataset.SetProjection(b4.GetProjection())
+            for line in range(numLines):
+                outputLine = ''
+                red_scanline = red_band.ReadRaster(0, line, red_band.XSize, 1,
+                    red_band.XSize, 1, gdal.GDT_Float32)
+                red_tuple = struct.unpack('f' * red_band.XSize, red_scanline)
 
-        if outDataset is None:
-            print('Could not create output image')
-            sys.exit(-1)
+                nir_scanline = nir_band.ReadRaster(0, line, nir_band.XSize, 1,
+                    nir_band.XSize, 1, gdal.GDT_Float32)
+                nir_tuple = struct.unpack('f' * nir_band.XSize, nir_scanline)
 
-        for line in range(numLines):
-            outputLine = ''
-            red_scanline = red_band.ReadRaster(0, line, red_band.XSize, 1,
-                red_band.XSize, 1, gdal.GDT_Float32)
-            red_tuple = struct.unpack('f' * red_band.XSize, red_scanline)
+                bqa_scanline = bqa_band.ReadRaster(0, line, bqa_band.XSize, 1,
+                    bqa_band.XSize, 1, gdal.GDT_Float32)
+                bqa_tuple = struct.unpack('f' * bqa_band.XSize, bqa_scanline)
 
-            nir_scanline = nir_band.ReadRaster(0, line, nir_band.XSize, 1,
-                nir_band.XSize, 1, gdal.GDT_Float32)
-            nir_tuple = struct.unpack('f' * nir_band.XSize, nir_scanline)
-
-            bqa_scanline = bqa_band.ReadRaster(0, line, bqa_band.XSize, 1,
-                bqa_band.XSize, 1, gdal.GDT_Float32)
-            bqa_tuple = struct.unpack('f' * bqa_band.XSize, bqa_scanline)
-
-            for i in range(len(red_tuple)):
-                if bqa_tuple[i] in bqa_values:
-                    ndvi = 0
-                else:
-                    ndvi_lower = (nir_tuple[i] + red_tuple[i])
-                    ndvi_upper = (nir_tuple[i] - red_tuple[i])
-                    ndvi = 0
-                    if ndvi_lower == 0:
+                for i in range(len(red_tuple)):
+                    if bqa_tuple[i] in bqa_values:
                         ndvi = 0
                     else:
-                        ndvi = ndvi_upper / ndvi_lower
+                        ndvi_lower = (nir_tuple[i] + red_tuple[i])
+                        ndvi_upper = (nir_tuple[i] - red_tuple[i])
+                        ndvi = 0
+                        if ndvi_lower == 0:
+                            ndvi = 0
+                        else:
+                            ndvi = ndvi_upper / ndvi_lower
 
-                outputLine = outputLine + struct.pack('f', ndvi)
+                    outputLine = outputLine + struct.pack('f', ndvi)
 
-            outDataset.GetRasterBand(1).WriteRaster(0, line, red_band.XSize, 1,
-                outputLine, buf_xsize=red_band.XSize, buf_ysize=1,
-                buf_type=gdal.GDT_Float32)
-            del outputLine
+                outDataset.GetRasterBand(1).WriteRaster(0, line, red_band.XSize,
+                    1, outputLine, buf_xsize=red_band.XSize, buf_ysize=1,
+                    buf_type=gdal.GDT_Float32)
+                del outputLine
 
-        print('NDVI Created in %s' % self.ndvi)
+            print('NDVI Created in %s' % self.ndvi)
 
     def change_detection(self):
         ndvi_warp = os.path.join(self.src_image_path,
@@ -207,7 +202,7 @@ class Process(object):
         last_ndvi = os.path.join(self.delivery_path,
             self.last_image + '_ndvi.tif')
         last_ndvi_warp = os.path.join(self.src_image_path,
-            self.last_image + '_ndviwarp.tif')
+            self.last_image + '_ndvi_warp.tif')
         changes = os.path.join(self.src_image_path,
             self.new_name + '_changes.tif')
         changes_mask = os.path.join(self.src_image_path,
@@ -237,7 +232,7 @@ class Process(object):
             # value 1 in the changes_mask
             call(['ogr2ogr', '-where', '"DN"=1', '-t_srs', 'EPSG:4674',
                 '-f', 'GeoJSON', detection_geojson, detection_shp])
-            print('Change detection created in %s.' % detection_geojson)
+            print('Change detection created in %s' % detection_geojson)
         else:
             print('Change detection was not executed because some NDVI image is missing.')
 
