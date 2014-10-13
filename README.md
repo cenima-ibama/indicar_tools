@@ -21,6 +21,10 @@ Process: creates RGB, NDVI and a polygon containing the losses in the vegetation
 
 path is the path for a compressed file containing the landsat imagery.
 
+#### Configuration
+
+Edit the file `settings.py` to define the folder where you want to save the processed images and a path to use as temporary processing folder.
+
 #### Requirements
 
 GDAL >= 1.9
