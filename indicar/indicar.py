@@ -36,7 +36,7 @@ to process Landsat 8 imagery.
 
 
 def args_options():
-    parser = argparse.ArgumentParser(prog='indicar.py',
+    parser = argparse.ArgumentParser(prog='indicar',
                         formatter_class=argparse.RawDescriptionHelpFormatter,
                         description=textwrap.dedent(DESCRIPTION))
     subparsers = parser.add_subparsers(help='Process Utility',
