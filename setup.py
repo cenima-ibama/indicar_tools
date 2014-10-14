@@ -8,6 +8,7 @@
 #
 # License: GPLv3
 
+from __future__ import print_function
 import sys
 import subprocess
 
@@ -28,7 +29,7 @@ On Ubuntu you should run:
     sudo apt-get install libgdal1-dev
 
 Exiting the setup now!"""
-    print error
+    print(error)
 
     sys.exit(1)
 

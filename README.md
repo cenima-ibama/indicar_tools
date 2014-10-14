@@ -7,7 +7,7 @@ indicar-tools is the software made by the Indicar Project to process Landsat 8 i
 
 #### Installation
 
-    pip install git+https://github.com/ibamacsr/indicar-tools/#egg=landsat-tools
+    pip install git+https://github.com/ibamacsr/indicar-tools/#egg=indicar-tools
 
 #### Commands:
 
