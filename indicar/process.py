@@ -206,7 +206,7 @@ class Process(object):
             4. Sieve the image, removing areas lower than 33 pixels
             5. Polygonize the sieve image creating a Shapefile
             6. Convert the Shapefile to GeoJSON reprojecting it to Sirgas 2000
-            '''
+        '''
 
         ndvi_warp = os.path.join(self.src_image_path,
             self.new_name + '_ndvi_warp.tif')

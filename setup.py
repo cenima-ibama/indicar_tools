@@ -44,7 +44,7 @@ setup(name="indicar",
       " to process Landsat 8 imagery.",
       long_description=readme(),
       author="willemarcel",
-      author_email="wille.marcel@hexgis.com",2
+      author_email="wille.marcel@hexgis.com",
       scripts=["bin/indicar"],
       url="https://github.com/ibamacsr/indicar-tools",
       packages=["indicar"],
