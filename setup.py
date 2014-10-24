@@ -39,12 +39,12 @@ def readme():
         return f.read()
 
 setup(name="indicar",
-      version='0.1.0',
+      version='0.2.0',
       description="indicar-tools is the software made by the Indicar Project" +
       " to process Landsat 8 imagery.",
       long_description=readme(),
       author="willemarcel",
-      author_email="wille.marcel@hexgis.com",
+      author_email="wille.marcel@hexgis.com",2
       scripts=["bin/indicar"],
       url="https://github.com/ibamacsr/indicar-tools",
       packages=["indicar"],
