@@ -136,18 +136,20 @@ class Process(object):
         print('Created RGB file in %s' % rgb)
 
     def make_ndvi(self):
-        '''Generate a NDVI image. If the BQA value indicates cloud or cirrus,
-        the NDVI value will be zero.'''
+        '''Generate a NDVI image. If the BQA value indicates cloud or cirrus or
+        if the pixel value in B6 is lower than 9000, the NDVI value will be zero.'''
 
         b4 = gdal.Open(self.b4, gdal.GA_ReadOnly)
         b5 = gdal.Open(self.b5, gdal.GA_ReadOnly)
+        b6 = gdal.Open(self.b6, gdal.GA_ReadOnly)
         bqa = gdal.Open(self.bqa, gdal.GA_ReadOnly)
 
-        if b4 is None or b5 is None or bqa is None:
+        if b4 is None or b5 is None or b6 is None or bqa is None:
             print("Some of the datasets could not be opened")
         else:
             red_band = b4.GetRasterBand(1)
             nir_band = b5.GetRasterBand(1)
+            b6_band = b6.GetRasterBand(1)
             bqa_band = bqa.GetRasterBand(1)
             numLines = red_band.YSize
 
@@ -171,12 +173,18 @@ class Process(object):
                     nir_band.XSize, 1, gdal.GDT_Float32)
                 nir_tuple = struct.unpack('f' * nir_band.XSize, nir_scanline)
 
+                b6_scanline = b6_band.ReadRaster(0, line, b6_band.XSize, 1,
+                    b6_band.XSize, 1, gdal.GDT_Float32)
+                b6_tuple = struct.unpack('f' * b6_band.XSize, b6_scanline)
+
                 bqa_scanline = bqa_band.ReadRaster(0, line, bqa_band.XSize, 1,
                     bqa_band.XSize, 1, gdal.GDT_Float32)
                 bqa_tuple = struct.unpack('f' * bqa_band.XSize, bqa_scanline)
 
                 for i in range(len(red_tuple)):
                     if bqa_tuple[i] in bqa_values:
+                        ndvi = 0
+                    elif b6_tuple[i] < 9000:
                         ndvi = 0
                     else:
                         ndvi_lower = (nir_tuple[i] + red_tuple[i])
