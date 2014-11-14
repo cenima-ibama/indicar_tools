@@ -39,7 +39,7 @@ def readme():
         return f.read()
 
 setup(name="indicar",
-      version='0.2.1',
+      version='0.3.0',
       description="indicar-tools is the software made by the Indicar Project" +
       " to process Landsat 8 imagery.",
       long_description=readme(),
@@ -53,5 +53,6 @@ setup(name="indicar",
       platforms="Posix; MacOS X; Windows",
       install_requires=[
           "GDAL>=1.9.0",
+          "numpy==1.9.1"
       ],
       )

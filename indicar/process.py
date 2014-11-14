@@ -18,6 +18,7 @@ from osgeo import gdal
 
 import settings
 from gdal_operations import *
+from ref_toa import Landsat8
 
 
 def check_create_folder(folder_path):
@@ -104,7 +105,11 @@ class Process(object):
         self.b4 = os.path.join(self.src_image_path, self.image + '_B4.TIF')
         self.b5 = os.path.join(self.src_image_path, self.image + '_B5.TIF')
         self.b6 = os.path.join(self.src_image_path, self.image + '_B6.TIF')
+        self.b4_toa = os.path.join(self.src_image_path, self.image + '_B4_toa.TIF')
+        self.b5_toa = os.path.join(self.src_image_path, self.image + '_B5_toa.TIF')
+        self.b6_toa = os.path.join(self.src_image_path, self.image + '_B6_toa.TIF')
         self.bqa = os.path.join(self.src_image_path, self.image + '_BQA.TIF')
+        self.mtl = os.path.join(self.src_image_path, self.image + '_MTL.txt')
         self.delivery_path = os.path.join(self.destination, self.lcpath,
             self.lcrow)
         self.ndvi = os.path.join(self.delivery_path, self.new_name + '_ndvi.tif')
@@ -136,12 +141,15 @@ class Process(object):
         print('Created RGB file in %s' % rgb)
 
     def make_ndvi(self):
-        '''Generate a NDVI image. If the BQA value indicates cloud or cirrus or
-        if the pixel value in B6 is lower than 9000, the NDVI value will be zero.'''
+        '''Generate a NDVI image using the Top of Atmosphere Reflectance images.
+        If the BQA value indicates cloud or cirrus or if the pixel value in B6
+        is lower than 0.1, the NDVI value will be zero.'''
 
-        b4 = gdal.Open(self.b4, gdal.GA_ReadOnly)
-        b5 = gdal.Open(self.b5, gdal.GA_ReadOnly)
-        b6 = gdal.Open(self.b6, gdal.GA_ReadOnly)
+        self.make_ref_toa()
+
+        b4 = gdal.Open(self.b4_toa, gdal.GA_ReadOnly)
+        b5 = gdal.Open(self.b5_toa, gdal.GA_ReadOnly)
+        b6 = gdal.Open(self.b6_toa, gdal.GA_ReadOnly)
         bqa = gdal.Open(self.bqa, gdal.GA_ReadOnly)
 
         if b4 is None or b5 is None or b6 is None or bqa is None:
@@ -184,7 +192,7 @@ class Process(object):
                 for i in range(len(red_tuple)):
                     if bqa_tuple[i] in bqa_values:
                         ndvi = 0
-                    elif b6_tuple[i] < 9000:
+                    elif b6_tuple[i] < 0.1:
                         ndvi = 0
                     else:
                         ndvi_lower = (nir_tuple[i] + red_tuple[i])
@@ -271,3 +279,17 @@ class Process(object):
         except OSError as exc:
             if exc.errno != errno.ENOENT:
                 raise
+
+    def make_ref_toa(self):
+        '''Convert the bands 4, 5 and 6 from Spot DN to Top of Atmosphere (TOA)
+        Reflectance.'''
+        if os.path.isfile(self.mtl):
+            image = Landsat8(self.mtl)
+            image.getGain()
+            image.getSolarAngle()
+            image.getSolarIrrad()
+            image.reflectanceToa([self.b4, self.b5, self.b6],
+                outname='_toa.TIF',
+                outpath=self.src_image_path)
+        else:
+            print('MTL file not found')
