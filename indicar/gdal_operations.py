@@ -73,9 +73,9 @@ def subtract(img1, img2, output_file):
     print('Difference image created in %s' % output_file)
 
 
-def mask_image(img, offset, output_file):
+def mask_image(img, threshold, output_file):
     '''Read an image and generates a mask with 1 where the pixel value is lower
-    than the offset and zero where it is greater.'''
+    than the threshold and zero where it is greater.'''
 
     image = gdal.Open(img, gdal.GA_ReadOnly)
 
@@ -104,7 +104,7 @@ def mask_image(img, offset, output_file):
         image_tuple = struct.unpack('f' * image_band.XSize, image_scanline)
 
         for i in range(len(image_tuple)):
-            if image_tuple[i] <= offset:
+            if image_tuple[i] <= threshold:
                 value = 1
             else:
                 value = 0
