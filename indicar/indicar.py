@@ -23,15 +23,21 @@ to process Landsat 8 imagery.
         Process: creates RGB, NDVI and a polygon containing the losses in the
         vegetation of the imagery in comparison with the NDVI of the same
         scene generated 16 days ago.
-        indicar process path
+        $ indicar process path
 
+    Options:
         RGB: creates only a RGB image, using the bands 6, 5 and 4. This RGB
         gives emphasys on the areas without vegetation.
-        indicar process --rgb path
+        $ indicar process --rgb path
 
         NDVI: creates only a NDVI image. Where there are clouds or cirrus,
         the pixel value will be 0.
-        indicar process --ndvi path
+        $ indicar process --ndvi path
+
+        Set Directory: by default, indicar-tools will save the processed images
+        in a folder named 'landsat' on your home dir, but you can set an
+        alternative directory using the --dir parameter.
+        $ indicar process path --dir directory_path
 """
 
 
@@ -49,6 +55,8 @@ def args_options():
                                 help='Create only a RGB from the imagery')
     parser_process.add_argument('--ndvi', action='store_true',
                                 help='Create only a NDVI from the imagery')
+    parser_process.add_argument('--dir',
+                                help='Directory where the processed images will be stored')
 
     return parser
 
@@ -59,7 +67,10 @@ def main(args):
     """
     if args:
         if args.subs == 'process':
-            p = Process(args.path)
+            if args.dir:
+                p = Process(args.path, args.dir)
+            else:
+                p = Process(args.path)
             if args.rgb:
                 p.make_rgb()
                 p.cleanup()

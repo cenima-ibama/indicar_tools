@@ -16,7 +16,6 @@ import struct
 
 from osgeo import gdal
 
-import settings
 from gdal_operations import *
 from ref_toa import Landsat8
 
@@ -74,7 +73,7 @@ def get_intersection_bounds(image1, image2):
 
 class Process(object):
 
-    def __init__(self, zip_image):
+    def __init__(self, zip_image, base_dir=None):
         """ Initating the Process class
 
         Arguments:
@@ -99,8 +98,11 @@ class Process(object):
         self.last_image = "%s_%s-%s_%s_%s" % (self.image[:3], self.lcpath,
             self.lcrow, self.last_date, self.image[16:])
 
-        self.destination = settings.PROCESSED_IMAGES
-        self.temp = settings.TEMP_PATH
+        if not base_dir:
+            base_dir = os.path.join(os.path.expanduser('~'), 'landsat')
+
+        self.destination = os.path.join(base_dir, 'processed')
+        self.temp = os.path.join(base_dir, 'temp')
         self.src_image_path = os.path.join(self.temp, self.image)
         self.b4 = os.path.join(self.src_image_path, self.image + '_B4.TIF')
         self.b5 = os.path.join(self.src_image_path, self.image + '_B5.TIF')
