@@ -11,23 +11,23 @@ indicar-tools is the software made by the Indicar Project to process Landsat 8 i
 
 #### Commands:
 
-RGB: creates only a RGB image, using the bands 6, 5 and 4. This RGB gives emphasys on the areas without vegetation.
-
-    indicar process --rgb path
-
-NDVI: creates only a NDVI image. Where there are clouds or cirrus, the pixel value will be 0.
-
-    indicar process --ndvi path
-
-Process: creates RGB, NDVI and a polygon containing the losses in the vegetation of the imagery in comparison with the NDVI of the same scene generated 16 days ago.
+**Process**: creates RGB, NDVI and a polygon containing the losses in the vegetation of the imagery in comparison with the NDVI of the same scene generated 16 days ago.
 
     indicar process path
 
-path is the path for a compressed file containing the landsat imagery.
+`path` is the path for a compressed file containing the landsat imagery.
 
-#### Configuration
+**RGB**: creates only a RGB image, using the bands 6, 5 and 4. This RGB gives emphasys on the areas without vegetation.
 
-Edit the file `settings.py` to define the folder where you want to save the processed images and a path to use as temporary processing folder.
+    indicar process --rgb path
+
+**NDVI**: creates only a NDVI image. Where there are clouds or cirrus, the pixel value will be 0.
+
+    indicar process --ndvi path
+
+**Set Directory**: by default, indicar-tools will save the processed images in a folder named 'landsat' on your home dir, but you can set an alternative directory using the `--dir` parameter.
+
+    indicar process path --dir directory_path
 
 #### Requirements
 
