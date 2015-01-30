@@ -62,9 +62,7 @@ def args_options():
 
 
 def main(args):
-    """
-    Main function - launches the program
-    """
+    """Main function - launches the program"""
     if args:
         if args.subs == 'process':
             if args.dir:
