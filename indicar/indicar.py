@@ -50,7 +50,8 @@ def args_options():
     parser_process = subparsers.add_parser('process',
                                            help='Process Landsat 8 imagery')
     parser_process.add_argument('path',
-                                help='Path to the compressed image file')
+                                help="""Path to the compressed image file or to
+                                a folder containing the uncompressed files.""")
     parser_process.add_argument('--rgb', action='store_true',
                                 help='Create only a RGB from the imagery')
     parser_process.add_argument('--ndvi', action='store_true',
@@ -71,10 +72,8 @@ def main(args):
                 p = Process(args.path)
             if args.rgb:
                 p.make_rgb()
-                p.cleanup()
             elif args.ndvi:
                 p.make_ndvi()
-                p.cleanup()
             else:
                 p.full()
 

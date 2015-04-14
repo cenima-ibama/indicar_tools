@@ -9,15 +9,13 @@
 from __future__ import print_function
 from datetime import date, timedelta
 from subprocess import call
-import shutil
 import struct
-import errno
 import os
 
 from osgeo import gdal
 
-from gdal_operations import *
-from ref_toa import Landsat8
+from .gdal_operations import *
+from .ref_toa import Landsat8
 
 
 def check_create_folder(folder_path):
@@ -31,11 +29,35 @@ def check_create_folder(folder_path):
     return folder_path
 
 
+def three_digit(number):
+    """ Add 0s to inputs that their length is less than 3.
+    For example: 1 --> 001 | 02 --> 020 | st --> 0st
+    """
+    number = str(number)
+    if len(number) == 1:
+        return '00%s' % number
+    elif len(number) == 2:
+        return '0%s' % number
+    else:
+        return number
+
+
 def get_file(path):
     """Separate the name of the file or folder from the path and return it
     Example: /path/to/file ---> file
     """
     return os.path.basename(path)
+
+
+def get_last_image_name(image):
+    """Returns the name of the 16 days ago landsat image"""
+    year, day = (image[9:13], image[13:16])
+
+    last_date = (date(int(year), 1, 1) + timedelta(int(day) - 17))
+    last_year = last_date.year
+    last_day = (last_date - date(last_year, 1, 1)).days + 1
+
+    return "%s%s%s%s" % (image[:9], last_year, three_digit(last_day), image[16:])
 
 
 def get_image_bounds(image_path):
@@ -75,61 +97,40 @@ def get_intersection_bounds(image1, image2):
 
 class Process(object):
 
-    def __init__(self, zip_image, base_dir=None):
+    def __init__(self, path, base_dir=None):
         """Initating the Process class
 
         Arguments:
-        zip_image - string containing the path of the landsat 8 compressed file
+        path - string containing the path of the landsat 8 folder or compressed file
 
         """
-        self.image = get_file(zip_image).split('.')[0]
-        self.lcpath = self.image[3:6]
-        self.lcrow = self.image[6:9]
-        self.year = self.image[9:13]
-        self.day = self.image[13:16]
-        self.date = (date(int(self.year), 1, 1) + timedelta(int(self.day) - 1)
-                    ).strftime('%Y%m%d')
-        self.new_name = "%s_%s-%s_%s_%s" % (self.image[:3], self.lcpath,
-            self.lcrow, self.date, self.image[16:])
+        path = path.rstrip('/')
+        self.image = get_file(path).split('.')[0]
 
-        # date of last image of the scene
-        self.last_date = (date(int(self.year), 1, 1) +
-                    timedelta(int(self.day) - 17)
-                    ).strftime('%Y%m%d')
-        # name of last image of the scene
-        self.last_image = "%s_%s-%s_%s_%s" % (self.image[:3], self.lcpath,
-            self.lcrow, self.last_date, self.image[16:])
+        if path.endswith('.tar.gz'):
+            if not base_dir:
+                base_dir = os.path.join(os.path.expanduser('~'), 'landsat')
+            self.src_image_path = os.path.join(base_dir, self.image)
+            check_create_folder(self.src_image_path)
+            self.extract(path, self.src_image_path)
+        else:
+            if os.path.isdir(path):
+                self.src_image_path = path
+            else:
+                self.src_image_path = os.path.join(os.path.expanduser('~'), 'landsat', path)
 
-        if not base_dir:
-            base_dir = os.path.join(os.path.expanduser('~'), 'landsat')
-
-        self.destination = os.path.join(base_dir, 'processed')
-        self.temp = os.path.join(base_dir, 'temp')
-        self.src_image_path = os.path.join(self.temp, self.image)
         self.b4 = os.path.join(self.src_image_path, self.image + '_B4.TIF')
         self.b5 = os.path.join(self.src_image_path, self.image + '_B5.TIF')
         self.b6 = os.path.join(self.src_image_path, self.image + '_B6.TIF')
-        self.b4_toa = os.path.join(self.src_image_path, self.image + '_B4_toa.TIF')
-        self.b5_toa = os.path.join(self.src_image_path, self.image + '_B5_toa.TIF')
-        self.b6_toa = os.path.join(self.src_image_path, self.image + '_B6_toa.TIF')
         self.bqa = os.path.join(self.src_image_path, self.image + '_BQA.TIF')
         self.mtl = os.path.join(self.src_image_path, self.image + '_MTL.txt')
-        self.delivery_path = os.path.join(self.destination, self.lcpath,
-            self.lcrow)
-        self.ndvi = os.path.join(self.delivery_path, self.new_name + '_ndvi.tif')
-
-        check_create_folder(self.src_image_path)
-        check_create_folder(self.delivery_path)
-
-        self.extract(zip_image, self.src_image_path)
+        self.ndvi = os.path.join(self.src_image_path, self.image + '_ndvi.tif')
 
     def full(self):
         """Make RGB and NDVI and move BQA image to delivery_path."""
         self.make_rgb()
         self.make_ndvi()
-        self.move_bqa()
         self.change_detection()
-        self.cleanup()
 
     def extract(self, src, dst):
         """Extract the Landsat 8 file."""
@@ -139,9 +140,11 @@ class Process(object):
     def make_rgb(self):
         """Make a RGB Image using the bands 4, 5 and 6."""
         vrt = os.path.join(self.src_image_path, self.image + '.vrt')
-        rgb = os.path.join(self.delivery_path, self.new_name + '_r6g5b4.tif')
+        rgb = os.path.join(self.src_image_path, self.image + '_r6g5b4.tif')
         call(['gdalbuildvrt', '-q', '-separate', vrt, self.b6, self.b5, self.b4])
         call(['gdal_translate', '-q', '-co', 'COMPRESS=LZW', vrt, rgb])
+
+        os.remove(vrt)
         print('Created RGB file in %s' % rgb)
 
     def make_ndvi(self):
@@ -214,7 +217,15 @@ class Process(object):
                     buf_type=gdal.GDT_Float32)
                 del outputLine
 
-            print('NDVI Created in %s' % self.ndvi)
+            #remove toa files
+            for toa in [self.b4_toa, self.b5_toa, self.b6_toa]:
+                os.remove(toa)
+                os.remove(toa.replace('.tif', '.aux'))
+
+            if os.path.isfile(self.ndvi):
+                print('NDVI Created in %s' % self.ndvi)
+            else:
+                print('NDVI could not be created')
 
     def change_detection(self):
         """The process of change detection involves the following steps:
@@ -228,24 +239,26 @@ class Process(object):
             6. Convert the Shapefile to GeoJSON reprojecting it to Sirgas 2000
         """
 
+        last_image = get_last_image_name(self.image)
         ndvi_warp = os.path.join(self.src_image_path,
-            self.new_name + '_ndvi_warp.tif')
-        last_ndvi = os.path.join(self.delivery_path,
-            self.last_image + '_ndvi.tif')
-        last_ndvi_warp = os.path.join(self.src_image_path,
-            self.last_image + '_ndvi_warp.tif')
+            self.image + '_ndvi_warp.tif')
+        last_ndvi = os.path.join(self.src_image_path.replace(self.image, ''),
+            last_image, last_image + '_ndvi.tif')
+        last_ndvi_warp = os.path.join(self.src_image_path.replace(self.image, ''),
+            last_image, last_image + '_ndvi_warp.tif')
         changes = os.path.join(self.src_image_path,
-            self.new_name + '_changes.tif')
+            self.image + '_changes.tif')
         changes_mask = os.path.join(self.src_image_path,
-            self.new_name + '_changes_mask.tif')
+            self.image + '_changes_mask.tif')
         sieve = os.path.join(self.src_image_path,
-            self.new_name + '_sieve.tif')
+            self.image + '_sieve.tif')
         detection_shp = os.path.join(self.src_image_path,
-            self.new_name + '_detection.shp')
-        detection_geojson = os.path.join(self.delivery_path,
-            self.new_name + '_detection.geojson')
+            self.image + '_detection.shp')
+        detection_geojson = os.path.join(self.src_image_path,
+            self.image + '_detection.geojson')
 
         if os.path.isfile(self.ndvi) and os.path.isfile(last_ndvi):
+            # verify if the images has different coordinates, if yes, warp them
             if get_image_bounds(self.ndvi) != get_image_bounds(last_ndvi):
                 bounds = get_intersection_bounds(self.ndvi, last_ndvi)
                 warp_image(self.ndvi, bounds, ndvi_warp)
@@ -264,36 +277,35 @@ class Process(object):
             # value 1 in the changes_mask
             call(['ogr2ogr', '-where', '"DN"=1', '-t_srs', 'EPSG:4674',
                 '-f', 'GeoJSON', detection_geojson, detection_shp])
+
+            # remove intermediate files
+            file_list = [ndvi_warp, last_ndvi_warp, changes, changes_mask,
+                sieve, detection_shp]
+            for f in file_list:
+                if os.path.isfile(f):
+                    os.remove(f)
+
             print('Change detection created in %s' % detection_geojson)
         else:
             print('Change detection was not executed because some NDVI image is missing.')
 
-    def move_bqa(self):
-        """Move the BQA file to delivery_path."""
-        if os.path.isfile(self.bqa):
-            os.rename(self.bqa,
-                os.path.join(self.delivery_path, self.new_name + '_BQA.tif'))
-        else:
-            print('BQA file not found')
-
-    def cleanup(self):
-        """Delete processing image path."""
-        try:
-            shutil.rmtree(self.src_image_path)
-        except OSError as exc:
-            if exc.errno != errno.ENOENT:
-                raise
 
     def make_ref_toa(self):
         """Convert the bands 4, 5 and 6 from Spot DN to Top of Atmosphere (TOA)
         Reflectance."""
+
+        self.b4_toa = os.path.join(self.src_image_path, self.image + '_B4_toa.tif')
+        self.b5_toa = os.path.join(self.src_image_path, self.image + '_B5_toa.tif')
+        self.b6_toa = os.path.join(self.src_image_path, self.image + '_B6_toa.tif')
+
         if os.path.isfile(self.mtl):
             image = Landsat8(self.mtl)
             image.getGain()
             image.getSolarAngle()
             image.getSolarIrrad()
             image.reflectanceToa([self.b4, self.b5, self.b6],
-                outname='_toa.TIF',
+                outname='_toa.tif',
                 outpath=self.src_image_path)
         else:
-            print('MTL file not found')
+            print("""Could not make TOA Reflectance images because MTL file
+                was not found""")
