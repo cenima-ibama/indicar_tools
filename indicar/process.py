@@ -241,25 +241,26 @@ class Process(object):
         """
 
         last_image = get_last_image_name(self.image)
-        ndvi_warp = os.path.join(self.src_image_path,
-            self.image + '_ndvi_warp.tif')
         last_ndvi = os.path.join(self.src_image_path.replace(self.image, ''),
             last_image, last_image + '_ndvi.tif')
-        last_ndvi_warp = os.path.join(self.src_image_path.replace(self.image, ''),
-            last_image, last_image + '_ndvi_warp.tif')
-        changes = os.path.join(self.src_image_path,
-            self.image + '_changes.tif')
-        changes_mask = os.path.join(self.src_image_path,
-            self.image + '_changes_mask.tif')
-        sieve = os.path.join(self.src_image_path,
-            self.image + '_sieve.tif')
-        # create a folder to shp files because it's more than one file
-        detection_shp = os.path.join(check_create_folder(self.src_image_path, 'shp'),
-            self.image + '_detection.shp')
-        detection_geojson = os.path.join(self.src_image_path,
-            self.image + '_detection.geojson')
 
         if os.path.isfile(self.ndvi) and os.path.isfile(last_ndvi):
+            ndvi_warp = os.path.join(self.src_image_path,
+                self.image + '_ndvi_warp.tif')
+            last_ndvi_warp = os.path.join(self.src_image_path.replace(self.image, ''),
+                last_image, last_image + '_ndvi_warp.tif')
+            changes = os.path.join(self.src_image_path,
+                self.image + '_changes.tif')
+            changes_mask = os.path.join(self.src_image_path,
+                self.image + '_changes_mask.tif')
+            sieve = os.path.join(self.src_image_path,
+                self.image + '_sieve.tif')
+            # create a folder to shp files because it's more than one file
+            detection_shp = os.path.join(check_create_folder(self.src_image_path, 'shp'),
+                self.image + '_detection.shp')
+            detection_geojson = os.path.join(self.src_image_path,
+                self.image + '_detection.geojson')
+
             # verify if the images has different coordinates, if yes, warp them
             if get_image_bounds(self.ndvi) != get_image_bounds(last_ndvi):
                 bounds = get_intersection_bounds(self.ndvi, last_ndvi)
