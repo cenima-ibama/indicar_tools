@@ -9,6 +9,7 @@
 from __future__ import print_function
 from datetime import date, timedelta
 from subprocess import call
+from shutil import rmtree
 import struct
 import os
 
@@ -252,7 +253,8 @@ class Process(object):
             self.image + '_changes_mask.tif')
         sieve = os.path.join(self.src_image_path,
             self.image + '_sieve.tif')
-        detection_shp = os.path.join(self.src_image_path,
+        # create a folder to shp files because it's more than one file
+        detection_shp = os.path.join(check_create_folder(self.src_image_path, 'shp'),
             self.image + '_detection.shp')
         detection_geojson = os.path.join(self.src_image_path,
             self.image + '_detection.geojson')
@@ -280,10 +282,13 @@ class Process(object):
 
             # remove intermediate files
             file_list = [ndvi_warp, last_ndvi_warp, changes, changes_mask,
-                sieve, detection_shp]
+                sieve]
             for f in file_list:
                 if os.path.isfile(f):
                     os.remove(f)
+
+            # remove shp folder
+            rmtree(join(self.src_image_path, 'shp'))
 
             print('Change detection created in %s' % detection_geojson)
         else:
