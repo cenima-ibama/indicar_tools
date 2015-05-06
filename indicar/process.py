@@ -127,11 +127,11 @@ class Process(object):
         self.mtl = os.path.join(self.src_image_path, self.image + '_MTL.txt')
         self.ndvi = os.path.join(self.src_image_path, self.image + '_ndvi.tif')
 
-    def full(self):
-        """Make RGB and NDVI and move BQA image to delivery_path."""
+    def full(self, polygonize=False):
+        """Make RGB, NDVI and change_detection"""
         self.make_rgb()
         self.make_ndvi()
-        self.change_detection()
+        self.change_detection(polygonize)
 
     def extract(self, src, dst):
         """Extract the Landsat 8 file."""
@@ -139,14 +139,21 @@ class Process(object):
         call(['tar', '-xzf', src, '-C', dst])
 
     def make_rgb(self):
-        """Make a RGB Image using the bands 4, 5 and 6."""
+        """Make a RGB Image using the bands 6, 5 and 4."""
         vrt = os.path.join(self.src_image_path, self.image + '.vrt')
         rgb = os.path.join(self.src_image_path, self.image + '_r6g5b4.tif')
         call(['gdalbuildvrt', '-q', '-separate', vrt, self.b6, self.b5, self.b4])
         call(['gdal_translate', '-q', '-co', 'COMPRESS=LZW', vrt, rgb])
 
         os.remove(vrt)
-        print('Created RGB file in %s' % rgb)
+
+        try:
+            check_integrity(rgb)
+            print('Created RGB file in %s' % rgb)
+            return rgb
+        except RasterFileIntegrityError:
+            print('Error on RGB file creation')
+            return False
 
     def make_ndvi(self):
         """Generate a NDVI image using the Top of Atmosphere Reflectance images.
@@ -224,11 +231,18 @@ class Process(object):
                 os.remove(toa.replace('.tif', '.aux'))
 
             if os.path.isfile(self.ndvi):
-                print('NDVI Created in %s' % self.ndvi)
+                try:
+                    check_integrity(self.ndvi)
+                    print('NDVI Created in %s' % self.ndvi)
+                    return self.ndvi
+                except RasterFileIntegrityError:
+                    print('NDVI could not be created')
+                    return False
             else:
                 print('NDVI could not be created')
+                return False
 
-    def change_detection(self):
+    def change_detection(self, polygonize=False):
         """The process of change detection involves the following steps:
             1. Warp NDVI images if it has differents coordinates and resolutions
             2. Subtract NDVI images
@@ -236,8 +250,9 @@ class Process(object):
                 where the pixel value is less than -0.08 and putting the value
                 0 in the others pixels
             4. Sieve the image, removing areas lower than 33 pixels
-            5. Polygonize the sieve image creating a Shapefile
-            6. Convert the Shapefile to GeoJSON reprojecting it to Sirgas 2000
+            5. If polygonize is true:
+                5.1 Polygonize the sieve image creating a Shapefile
+                5.2 Convert the Shapefile to GeoJSON reprojecting it to Sirgas 2000
         """
 
         last_image = get_last_image_name(self.image)
@@ -254,7 +269,7 @@ class Process(object):
             changes_mask = os.path.join(self.src_image_path,
                 self.image + '_changes_mask.tif')
             sieve = os.path.join(self.src_image_path,
-                self.image + '_sieve.tif')
+                self.image + '_detection.tif')
             # create a folder to shp files because it's more than one file
             detection_shp = os.path.join(check_create_folder(self.src_image_path, 'shp'),
                 self.image + '_detection.shp')
@@ -273,27 +288,32 @@ class Process(object):
             mask_image(changes, -0.08, changes_mask)
             # remove areas lower than 33 pixels what represents 30000 sq metres
             call(['gdal_sieve.py', '-st', '33', changes_mask, sieve])
-            call(['gdal_polygonize.py', sieve, '-f', 'ESRI Shapefile',
-                detection_shp])
-            # convert to GeoJSON, reproject in Sirgas 2000 and filter areas
-            # with DN=1 to get only the areas where the pixel had
-            # value 1 in the changes_mask
-            call(['ogr2ogr', '-where', '"DN"=1', '-t_srs', 'EPSG:4674',
-                '-f', 'GeoJSON', detection_geojson, detection_shp])
+            result_file = sieve
+
+            if polygonize is True:
+                call(['gdal_polygonize.py', sieve, '-f', 'ESRI Shapefile',
+                    detection_shp])
+                # convert to GeoJSON, reproject in Sirgas 2000 and filter areas
+                # with DN=1 to get only the areas where the pixel had
+                # value 1 in the changes_mask
+                call(['ogr2ogr', '-where', '"DN"=1', '-t_srs', 'EPSG:4674',
+                    '-f', 'GeoJSON', detection_geojson, detection_shp])
+                os.remove(sieve)
+                result_file = detection_geojson
 
             # remove intermediate files
-            file_list = [ndvi_warp, last_ndvi_warp, changes, changes_mask,
-                sieve]
+            file_list = [ndvi_warp, last_ndvi_warp, changes, changes_mask]
             for f in file_list:
                 if os.path.isfile(f):
                     os.remove(f)
-
             # remove shp folder
             rmtree(join(self.src_image_path, 'shp'))
 
             print('Change detection created in %s' % detection_geojson)
+            return result_file
         else:
             print('Change detection was not executed because some NDVI image is missing.')
+            return False
 
 
     def make_ref_toa(self):

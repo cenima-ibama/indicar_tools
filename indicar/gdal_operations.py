@@ -14,6 +14,20 @@ import sys
 from osgeo import gdal
 
 
+class RasterFileIntegrityError(Exception):
+    pass
+
+
+def check_integrity(raster_file):
+    ds = gdal.Open(raster_file)
+    for band in range(1, ds.RasterCount + 1):
+        ds.GetRasterBand(band).Checksum()
+        if gdal.GetLastErrorType() != 0:
+            raise RasterFileIntegrityError(
+                'Band %s of %s is corrupted.' % (band, raster_file)
+                )
+
+
 def warp_image(image, bounds, output_file):
     """Warp image to the boundaries coordinates."""
     bounds = ['%s' % i for i in bounds]
