@@ -271,7 +271,7 @@ class Process(object):
             sieve = os.path.join(self.src_image_path,
                 self.image + '_detection.tif')
             # create a folder to shp files because it's more than one file
-            detection_shp = os.path.join(check_create_folder(self.src_image_path, 'shp'),
+            detection_shp = os.path.join(check_create_folder(join(self.src_image_path, 'shp')),
                 self.image + '_detection.shp')
             detection_geojson = os.path.join(self.src_image_path,
                 self.image + '_detection.geojson')
