@@ -293,6 +293,7 @@ class Process(object):
                 detection_geojson = os.path.join(self.src_image_path,
                     self.image + '_detection.geojson')
 
+                # polygonize sieve file to shapefile
                 call(['gdal_polygonize.py', sieve, '-f', 'ESRI Shapefile',
                     detection_shp])
                 # convert to GeoJSON, reproject in Sirgas 2000 and filter areas
@@ -312,7 +313,7 @@ class Process(object):
                 if os.path.isfile(f):
                     os.remove(f)
 
-            print('Change detection created in %s' % detection_geojson)
+            print('Change detection created in %s' % result_file)
             return result_file
         else:
             print('Change detection was not executed because some NDVI image is missing.')
