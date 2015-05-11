@@ -13,7 +13,7 @@ import argparse
 import textwrap
 import sys
 
-from process import Process
+from .process import Process
 
 
 DESCRIPTION = """indicar-tools is the software made by the Indicar Project
