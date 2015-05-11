@@ -270,12 +270,6 @@ class Process(object):
                 self.image + '_changes_mask.tif')
             sieve = os.path.join(self.src_image_path,
                 self.image + '_detection.tif')
-            # create a folder to shp files because it's more than one file
-            detection_shp = os.path.join(
-                check_create_folder(os.path.join(self.src_image_path, 'shp')),
-                self.image + '_detection.shp')
-            detection_geojson = os.path.join(self.src_image_path,
-                self.image + '_detection.geojson')
 
             # verify if the images has different coordinates, if yes, warp them
             if get_image_bounds(self.ndvi) != get_image_bounds(last_ndvi):
@@ -292,6 +286,13 @@ class Process(object):
             result_file = sieve
 
             if polygonize is True:
+                # create a folder to shp files because it's more than one file
+                detection_shp = os.path.join(
+                    check_create_folder(os.path.join(self.src_image_path, 'shp')),
+                    self.image + '_detection.shp')
+                detection_geojson = os.path.join(self.src_image_path,
+                    self.image + '_detection.geojson')
+
                 call(['gdal_polygonize.py', sieve, '-f', 'ESRI Shapefile',
                     detection_shp])
                 # convert to GeoJSON, reproject in Sirgas 2000 and filter areas
@@ -302,13 +303,14 @@ class Process(object):
                 os.remove(sieve)
                 result_file = detection_geojson
 
+                # remove shp folder
+                rmtree(os.path.join(self.src_image_path, 'shp'))
+
             # remove intermediate files
             file_list = [ndvi_warp, last_ndvi_warp, changes, changes_mask]
             for f in file_list:
                 if os.path.isfile(f):
                     os.remove(f)
-            # remove shp folder
-            rmtree(join(self.src_image_path, 'shp'))
 
             print('Change detection created in %s' % detection_geojson)
             return result_file
