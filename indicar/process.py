@@ -187,7 +187,7 @@ class Process(object):
             outDataset.SetProjection(b4.GetProjection())
 
             for line in range(numLines):
-                outputLine = ''
+                outputLine = b''
                 red_scanline = red_band.ReadRaster(0, line, red_band.XSize, 1,
                     red_band.XSize, 1, gdal.GDT_Float32)
                 red_tuple = struct.unpack('f' * red_band.XSize, red_scanline)
@@ -218,7 +218,7 @@ class Process(object):
                         else:
                             ndvi = ndvi_upper / ndvi_lower
 
-                    outputLine = outputLine + struct.pack('f', ndvi).decode('utf-8')
+                    outputLine = outputLine + struct.pack('f', ndvi)
 
                 outDataset.GetRasterBand(1).WriteRaster(0, line, red_band.XSize,
                     1, outputLine, buf_xsize=red_band.XSize, buf_ysize=1,
