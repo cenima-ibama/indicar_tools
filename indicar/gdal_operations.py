@@ -61,7 +61,7 @@ def subtract(img1, img2, output_file):
         sys.exit(-1)
 
     for line in range(numLines):
-        outputLine = ''
+        outputLine = b''
         img1_scanline = img1_band.ReadRaster(0, line, img1_band.XSize, 1,
             img1_band.XSize, 1, gdal.GDT_Float32)
         img1_tuple = struct.unpack('f' * img1_band.XSize, img1_scanline)
@@ -111,7 +111,7 @@ def mask_image(img, threshold, output_file):
         sys.exit(-1)
 
     for line in range(numLines):
-        outputLine = ''
+        outputLine = b''
         image_scanline = image_band.ReadRaster(0, line, image_band.XSize, 1,
             image_band.XSize, 1, gdal.GDT_Float32)
         image_tuple = struct.unpack('f' * image_band.XSize, image_scanline)
