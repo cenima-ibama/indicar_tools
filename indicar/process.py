@@ -218,7 +218,7 @@ class Process(object):
                         else:
                             ndvi = ndvi_upper / ndvi_lower
 
-                    outputLine = outputLine + struct.pack('f', ndvi)
+                    outputLine = outputLine + struct.pack('f', ndvi).decode('utf-8')
 
                 outDataset.GetRasterBand(1).WriteRaster(0, line, red_band.XSize,
                     1, outputLine, buf_xsize=red_band.XSize, buf_ysize=1,
