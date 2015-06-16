@@ -99,10 +99,10 @@ def get_intersection_bounds(image1, image2):
 class Process(object):
 
     def __init__(self, path, base_dir=None):
-        """Initating the Process class
+        """Initialize the Process class
 
         Arguments:
-        path - string containing the path of the landsat 8 folder or compressed file
+        path - string containing the path of the Landsat folder or compressed file
 
         """
         path = path.rstrip('/')
@@ -127,30 +127,35 @@ class Process(object):
         self.mtl = os.path.join(self.src_image_path, self.image + '_MTL.txt')
         self.ndvi = os.path.join(self.src_image_path, self.image + '_ndvi.tif')
 
-    def full(self, polygonize=False):
-        """Make RGB, NDVI and change_detection"""
-        self.make_rgb()
+    def full(self, bands=[6, 5, 4], polygonize=False):
+        """Make an image composition with the chosen bands, a NDVI composition
+        and change_detection.
+        """
+        self.make_img(bands)
         self.make_ndvi()
         self.change_detection(polygonize)
 
     def extract(self, src, dst):
-        """Extract the Landsat 8 file."""
+        """Extract the Landsat file."""
         print("Extracting %s - It might take some time" % self.image)
         call(['tar', '-xzf', src, '-C', dst])
 
-    def make_rgb(self):
-        """Make a RGB Image using the bands 6, 5 and 4."""
+    def make_img(self, bands):
+        """Make an image composition with the chosen bands."""
         vrt = os.path.join(self.src_image_path, self.image + '.vrt')
-        rgb = os.path.join(self.src_image_path, self.image + '_r6g5b4.tif')
-        call(['gdalbuildvrt', '-q', '-separate', vrt, self.b6, self.b5, self.b4])
-        call(['gdal_translate', '-q', '-co', 'COMPRESS=LZW', vrt, rgb])
+        img = os.path.join(self.src_image_path, self.image + '_r%sg%sb%s.tif' % tuple(bands))
+        band_path = os.path.join(self.src_image_path, self.image + '_B%s.TIF')
+        band_paths  = [band_path % band for band in bands]
+
+        call(['gdalbuildvrt', '-q', '-separate', vrt] + band_paths)
+        call(['gdal_translate', '-q', '-co', 'COMPRESS=LZW', vrt, img])
 
         os.remove(vrt)
 
         try:
-            check_integrity(rgb)
-            print('Created RGB file in %s' % rgb)
-            return rgb
+            check_integrity(img)
+            print('Created Image composition file in %s' % img)
+            return img
         except RasterFileIntegrityError:
             print('Error on RGB file creation')
             return False

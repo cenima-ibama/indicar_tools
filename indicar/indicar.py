@@ -17,17 +17,21 @@ from .process import Process
 
 
 DESCRIPTION = """indicar-tools is the software made by the Indicar Project
-to process Landsat 8 imagery.
+to process Landsat imagery.
 
     Commands:
-        Process: creates RGB, NDVI and a raster change detection file containing
-        the losses in the vegetation of the imagery in comparison with the NDVI
-        of the same scene generated 16 days ago.
+        Process: creates bands composition, NDVI and a raster change detection
+        file containing the losses in the vegetation of the imagery in comparison
+        with the NDVI of the same scene generated 16 days ago.
         $ indicar process path
 
         If you want the change detection as a vector file instead of a raster,
         use the --polygonize parameter:
         $ indicar process path --polygonize
+
+        The default image composition uses the bands 6, 5 and 4. If you want
+        use others bands, add the parameter -b or --bands:
+        $ indicar process path -b 432
 
     Options:
         RGB: creates only a RGB image, using the bands 6, 5 and 4. This composition
@@ -52,20 +56,24 @@ def args_options():
     subparsers = parser.add_subparsers(help='Process Utility',
                                        dest='subs')
     parser_process = subparsers.add_parser('process',
-                                           help='Process Landsat 8 imagery')
+                                           help='Process Landsat imagery')
     parser_process.add_argument('path',
-                                help="""Path to the compressed LC8 file or to
+                                help="""Path to the compressed Landsat file or to
                                 a folder containing the uncompressed files.""")
-    parser_process.add_argument('--rgb', action='store_true',
-                                help='Create only a RGB from the imagery')
+    parser_process.add_argument('--compose', action='store_true',
+                                help='Create only an image composition.')
     parser_process.add_argument('--ndvi', action='store_true',
-                                help='Create only a NDVI from the imagery')
+                                help='Create only a NDVI from the imagery.')
     parser_process.add_argument('--polygonize', action='store_true',
                                 help="""When calculating change_detection,
                                 polygonize the result generating a geojson file,
                                 instead of a TIF image.""")
-    parser_process.add_argument('--dir',
-                                help='Directory where the processed images will be stored')
+    parser_process.add_argument('-d', '--dir',
+                                help='Directory where the processed images will be stored.')
+    parser_process.add_argument('-b', '--bands',
+                                help="""Bands that will be used to the image
+                                composition. Default value is 654.
+                                """)
 
     return parser
 
@@ -78,12 +86,20 @@ def main(args):
                 p = Process(args.path, args.dir)
             else:
                 p = Process(args.path)
-            if args.rgb:
-                p.make_rgb()
+            if args.compose:
+                if args.bands:
+                    bands = [int(b) for b in args.bands if b.isdigit()]
+                    p.make_img(bands)
+                else:
+                    p.make_img()
             elif args.ndvi:
                 p.make_ndvi()
             else:
-                p.full(args.polygonize)
+                if args.bands:
+                    bands = [int(b) for b in args.bands if b.isdigit()]
+                    p.full(bands, args.polygonize)
+                else:
+                    p.full(polygonize=args.polygonize)
 
 
 def exit(message, code=0):
