@@ -3,7 +3,7 @@ indicar-tools
 
 Indicar Landsat Geoprocessing Tools
 
-indicar-tools is the software made by the Indicar Project to process Landsat 8 imagery.
+indicar-tools is the software made by the Indicar Project to process Landsat imagery.
 
 #### Installation
 
@@ -11,7 +11,9 @@ indicar-tools is the software made by the Indicar Project to process Landsat 8 i
 
 #### Commands:
 
-**Process**: Process: creates RGB, NDVI and a raster change detection file containing the losses in the vegetation of the imagery in comparison with the NDVI of the same scene generated 16 days ago.
+**Process**: creates RGB, NDVI and a raster change detection file containing the losses in the vegetation of the imagery in comparison with the NDVI of the same scene generated 16 days ago.
+
+The NDVI and change detection images can only be created to Landsat 8 imagery.
 
     indicar process path
 
@@ -21,9 +23,9 @@ If you want the change detection as a vector file instead of a raster, use the -
 
 `path` is the path to the compressed LC8 file or to a folder containing the uncompressed files.
 
-**RGB**: creates only a RGB image, using the bands 6, 5 and 4. This composition gives emphasys to the areas without vegetation.
+**Compose**: creates only a image composition with the bands you inform in the parameter --bands/-b. If you don't pass the bands parameter, the default bands are 6, 5 and 4.
 
-    indicar process --rgb path
+    indicar process --compose --bands 4,3,2 path
 
 **NDVI**: creates only a NDVI image. Where there are clouds or cirrus, the pixel value will be 0.
 
