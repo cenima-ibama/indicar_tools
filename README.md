@@ -25,7 +25,7 @@ If you want the change detection as a vector file instead of a raster, use the -
 
 **Compose**: creates only a image composition with the bands you inform in the parameter --bands/-b. If you don't pass the bands parameter, the default bands are 6, 5 and 4.
 
-    indicar process --compose --bands 4,3,2 path
+    indicar process --compose --bands 432 path
 
 **NDVI**: creates only a NDVI image. Where there are clouds or cirrus, the pixel value will be 0.
 
